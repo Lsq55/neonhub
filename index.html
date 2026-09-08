@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEON // 工作台</title><link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="noise"></canvas><div class="scanlines"></div>
+<header class="topbar"><div class="brand"><span class="brand-mark">✦</span><div><b>NEON<span>//</span>HUB</b><small>PERSONAL COMMAND CENTER</small></div></div><div class="status"><i></i> SYSTEM ONLINE <span id="clock"></span></div><button id="themeBtn" class="switch" aria-label="切换主题"><span></span><em>LIGHTSHIFT</em></button></header>
+<main><section class="hero"><div><p class="eyebrow">WELCOME BACK, OPERATOR</p><h1>你的数字<span>工作台</span></h1><p class="sub">集中启动每天需要的网页，保持专注，快速进入状态。</p></div><button id="addCategory" class="holo-btn">＋ 新建模块</button></section>
+<nav id="tabs" class="tabs"></nav><section id="content" class="content"></section></main>
+<dialog id="modal"><form method="dialog" id="form"><h3 id="modalTitle">新增链接</h3><input id="title" placeholder="名称，例如：公司邮箱" required><input id="url" placeholder="网址，例如：https://example.com" required><div class="form-actions"><button value="cancel" class="ghost">取消</button><button value="default" class="holo-btn">保存</button></div></form></dialog>
+<script src="app.js"></script>
+</body></html>
