@@ -1,4 +1,21 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NeonHub</title><link rel="stylesheet" href="style.css"></head><body><canvas id="particles"></canvas><div class="shell"><header><div class="heading"><div class="logo">✦</div><div><h1>NeonHub</h1><p id="summary"></p></div></div><button id="addCategory" class="primary">＋ 添加模块</button></header><div id="toast" role="status"></div><div id="account"><span id="userEmail"></span><button id="logoutBtn">退出</button></div><main id="layout"></main></div><div id="loginView"><div class="login-card"><div class="logo">✦</div><h2>登录 NeonHub</h2><p>登录后管理你的常用网页</p><form id="loginForm"><input id="loginEmail" type="email" placeholder="邮箱" required><input id="loginPassword" type="password" placeholder="密码" required><button class="primary" type="submit">登录</button><div id="loginError"></div></form></div></div><dialog id="modal"><form method="dialog" id="form"><h2 id="modalTitle">添加网页</h2><input id="title" required><input id="url" required><div class="dialog-actions"><button type="button" id="cancelBtn">取消</button><button class="primary" value="default">保存</button></div></form></dialog><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app.js"></script></body></html>
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>NeonHub</title><link rel="stylesheet" href="style.css"></head><body><canvas id="particles"></canvas><div class="shell"><header><div class="heading"><div class="logo">✦</div><div><h1>NeonHub</h1><p id="summary"></p></div></div><button id="addCategory" class="primary">＋ 添加模块</button></header><div id="toast" role="status"></div><div id="account"><span id="userEmail"></span><button type="button" id="changePasswordBtn">修改密码</button><button id="logoutBtn">退出</button></div><main id="layout"></main></div><div id="loginView"><div class="login-card"><div class="logo">✦</div><h2>登录 NeonHub</h2><p>登录后管理你的常用网页</p><form id="loginForm"><input id="loginEmail" type="email" placeholder="邮箱" required><input id="loginPassword" type="password" placeholder="密码" required><button class="primary" type="submit">登录</button><div id="loginError" role="status"></div></form><button type="button" id="forgotPasswordBtn">忘记密码</button></div></div><dialog id="modal"><form method="dialog" id="form"><h2 id="modalTitle">添加网页</h2><input id="title" required><input id="url" required><div class="dialog-actions"><button type="button" id="cancelBtn">取消</button><button class="primary" value="default">保存</button></div></form></dialog><dialog id="passwordDialog" aria-labelledby="passwordHeading">
+  <h2 id="passwordHeading">通过邮箱修改密码</h2>
+  <form id="resetEmailForm">
+    <p>输入账户邮箱，我们会发送重置密码的链接。</p>
+    <label for="resetEmail">账户邮箱</label>
+    <input id="resetEmail" type="email" autocomplete="email" required>
+    <button class="primary" type="submit">发送重置邮件</button>
+  </form>
+  <form id="newPasswordForm" hidden>
+    <label for="newPassword">新密码（至少 8 位）</label>
+    <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+    <label for="confirmPassword">确认新密码</label>
+    <input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required>
+    <button class="primary" type="submit">保存新密码</button>
+  </form>
+  <p id="passwordStatus" role="status" aria-live="polite"></p>
+  <button type="button" id="closePasswordBtn">关闭</button>
+</dialog><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app.js"></script><script src="auth.js"></script></body></html>
 
 
 

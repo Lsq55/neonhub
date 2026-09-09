@@ -12,3 +12,16 @@ main{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:20px!important}
 .module-head[draggable="false"], .link[draggable="false"] { cursor: default; }
 .link[draggable="false"] { cursor: pointer; }
 button:disabled { cursor: wait; transform: none; }
+/* Password forms share the current high-contrast theme. */
+[hidden] { display: none !important; }
+#passwordDialog { max-height: calc(100dvh - 40px); overflow-y: auto; }
+#passwordDialog label { display: block; margin-top: 16px; font-size: 14px; }
+#passwordDialog h2 { margin-top: 0; }
+#passwordDialog p { font-size: 14px; overflow-wrap: anywhere; }
+#passwordDialog button { margin: 8px 0; }
+#passwordStatus:empty { display: none; }
+#forgotPasswordBtn { margin-top: 16px; }
+.shell { padding-top: 92px; }
+#account { max-width: calc(100% - 32px); flex-wrap: wrap; }
+#userEmail { overflow-wrap: anywhere; }
+@media(max-width:650px) { .shell { padding-top: 120px; } #account { left: 16px; right: 16px; } }
