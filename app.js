@@ -1,6 +1,6 @@
 const SUPABASE_URL='https://iffxyfyfilbkqufyemoe.supabase.co',SUPABASE_KEY='sb_publishable_W8FyZODc9qO-k7YoMVrZ0g_8poq4Uae';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);let data=[],editing=null,cat=0,currentUser=null;const $=s=>document.querySelector(s),storeKey='neonhub-data';
-const saveLocal=()=>localStorage.setItem(storeKey,JSON.stringify(data));
+const saveLocal=(snapshot=data)=>localStorage.setItem(storeKey,JSON.stringify(snapshot));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 async function load(){const local=JSON.parse(localStorage.getItem(storeKey)||'null');try{const [cr,lr]=await Promise.all([db.from('categories').select('id,name,sort_order').eq('user_id',currentUser.id).order('sort_order').order('created_at'),db.from('links').select('id,category,title,url,sort_order').eq('user_id',currentUser.id).order('sort_order').order('created_at')]);if(cr.error||lr.error)throw Error();const lm={};lr.data.forEach(r=>(lm[r.category]??=[]).push(r));const names=[...cr.data.map(c=>c.name),...Object.keys(lm)];data=[...new Set(names)].map(name=>{const c=cr.data.find(x=>x.name===name);return {id:c?.id,name,sort_order:c?.sort_order,links:lm[name]||[]}});if(!data.length){const {data:r}=await db.from('categories').insert({name:'工作',user_id:currentUser.id}).select().single();data=[{id:r?.id,name:'工作',links:[]}]}else{for(const m of data)if(!m.id){const {data:r}=await db.from('categories').insert({name:m.name,user_id:currentUser.id}).select().single();if(r)m.id=r.id}}saveLocal()}catch{data=local||[{name:'工作',links:[]}];toast('已进入本地模式，数据会保存在此浏览器')}render()}
@@ -13,13 +13,30 @@ window.editLink=(m,l)=>openModal(m,l);window.removeLink=async(m,l)=>{if(!confirm
 // Drag identity is held in this page, never inferred from an empty DataTransfer value.
 let activeDrag = null;
 let savingDrag = false;
+let sortQueue = Promise.resolve();
+let sortGeneration = 0;
+let pendingSortSaves = 0;
+let recoveringSort = false;
+
+async function withSortTimeout(operation) {
+  const controller = new AbortController();
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new Error('排序请求超时，请检查网络后重试'));
+    }, 10000);
+  });
+  try { return await Promise.race([operation(controller.signal), timeout]); }
+  finally { clearTimeout(timer); }
+}
 window.endDrag = () => {
   activeDrag = null;
   document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
 };
 function startDrag(e, payload) {
   e.stopPropagation();
-  if (savingDrag || e.target.closest('button,input')) {
+  if (recoveringSort || e.target.closest('button,input')) {
     e.preventDefault();
     return;
   }
@@ -31,7 +48,7 @@ function startDrag(e, payload) {
 window.dragModule = (e, i) => startDrag(e, {kind: 'module', module: data[i]});
 window.dragLink = (e, m, l) => startDrag(e, {kind: 'link', module: data[m], link: data[m].links[l]});
 window.dragOver = e => {
-  if (!activeDrag || savingDrag) return;
+  if (!activeDrag || recoveringSort) return;
   e.preventDefault();
   e.stopPropagation();
   e.dataTransfer.dropEffect = 'move';
@@ -46,7 +63,7 @@ async function finishDrop(e, targetIndex, linkIndex) {
   e.stopPropagation();
   const drag = activeDrag;
   endDrag();
-  if (!drag || savingDrag || !data[targetIndex]) return;
+  if (!drag || recoveringSort || !data[targetIndex]) return;
   const sourceIndex = data.indexOf(drag.module);
   if (sourceIndex < 0) return;
   const next = data.map(m => ({...m, links: m.links.map(l => ({...l}))}));
@@ -93,31 +110,38 @@ async function finishDrop(e, targetIndex, linkIndex) {
     return !old || Object.entries(w.values).some(([key, value]) => old[key] !== value);
   });
   savingDrag = true;
+  pendingSortSaves++;
+  const generation = sortGeneration;
   // Render immediately; ordinary links stay clickable during cloud persistence.
   data = next;
   render();
   setSortBusy(true);
+  const task = sortQueue.then(async () => {
   try {
+    if (generation !== sortGeneration || currentUser?.id !== ownerId) return;
     const results = await Promise.allSettled(writes.map(async w => {
-      const result = await db.from(w.table).update(w.values)
-        .eq('id', w.id).eq('user_id', ownerId).select('id').single();
+      const result = await withSortTimeout(signal => db.from(w.table).update(w.values)
+        .eq('id', w.id).eq('user_id', ownerId).select('id').abortSignal(signal).single());
       if (result.error) throw result.error;
       if (!result.data) throw new Error('未更新到云端记录');
     }));
     // Wait for every request before reading back a partially completed batch.
     const failure = results.find(r => r.status === 'rejected');
     if (failure) throw failure.reason;
-    if (currentUser?.id === ownerId) saveLocal();
+    if (currentUser?.id === ownerId) saveLocal(next);
   } catch (error) {
+    sortGeneration++;
+    recoveringSort = true;
+    endDrag();
     if (currentUser?.id !== ownerId) return;
     data = previous;
     render();
     setSortBusy(true);
     try {
-      const [categories, links] = await Promise.all([
-        db.from('categories').select('id,name,sort_order').eq('user_id',ownerId).order('sort_order').order('created_at').order('id'),
-        db.from('links').select('id,category,title,url,sort_order').eq('user_id',ownerId).order('sort_order').order('created_at').order('id')
-      ]);
+      const [categories, links] = await withSortTimeout(signal => Promise.all([
+        db.from('categories').select('id,name,sort_order').eq('user_id',ownerId).order('sort_order').order('created_at').order('id').abortSignal(signal),
+        db.from('links').select('id,category,title,url,sort_order').eq('user_id',ownerId).order('sort_order').order('created_at').order('id').abortSignal(signal)
+      ]));
       if (categories.error || links.error) throw categories.error || links.error;
       if (currentUser?.id !== ownerId) return;
       const names = [...new Set([...categories.data.map(c=>c.name), ...links.data.map(l=>l.category)])];
@@ -129,13 +153,19 @@ async function finishDrop(e, targetIndex, linkIndex) {
       toast('排序保存失败，已恢复拖动前的显示；云端状态暂无法确认，请联网后刷新：' + (error.message || '网络错误'));
     }
   } finally {
-    savingDrag = false;
-    setSortBusy(false);
+    recoveringSort = false;
+    pendingSortSaves--;
+    savingDrag = pendingSortSaves > 0;
+    setSortBusy(savingDrag);
   }
+  });
+  sortQueue = task.catch(() => {});
+  return task;
 }
 
 function setSortBusy(busy) {
   // Prevent conflicting writes, without blocking navigation or reading the page.
   document.querySelectorAll('.module button, #addCategory, #form button[type="submit"], #form .primary').forEach(button => {button.disabled = busy;});
-  document.querySelectorAll('.module-head, .link').forEach(el => {el.draggable = !busy;});
+  // Keep drag handles available while a previous save is pending.
 }
+
