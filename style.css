@@ -7,4 +7,8 @@ main{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:20px!important}
 .module .module-head, .module .link { cursor: grab; }
 .module .module-head:active, .module .link:active { cursor: grabbing; }
 .drop-target { outline: 3px dashed #000; outline-offset: -8px; }
-#layout[aria-busy="true"] { pointer-events: none; cursor: wait; }
+
+
+.module-head[draggable="false"], .link[draggable="false"] { cursor: default; }
+.link[draggable="false"] { cursor: pointer; }
+button:disabled { cursor: wait; transform: none; }

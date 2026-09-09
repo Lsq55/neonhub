@@ -3,7 +3,7 @@ const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);let data=[],edi
 const saveLocal=()=>localStorage.setItem(storeKey,JSON.stringify(data));
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
-async function load(){const local=JSON.parse(localStorage.getItem(storeKey)||'null');try{const [cr,lr]=await Promise.all([db.from('categories').select('id,name,sort_order').eq('user_id',currentUser.id).order('sort_order').order('created_at'),db.from('links').select('id,category,title,url,sort_order').eq('user_id',currentUser.id).order('sort_order').order('created_at')]);if(cr.error||lr.error)throw Error();const lm={};lr.data.forEach(r=>(lm[r.category]??=[]).push(r));const names=[...cr.data.map(c=>c.name),...Object.keys(lm)];data=[...new Set(names)].map(name=>{const c=cr.data.find(x=>x.name===name);return {id:c?.id,name,links:lm[name]||[]}});if(!data.length){const {data:r}=await db.from('categories').insert({name:'工作',user_id:currentUser.id}).select().single();data=[{id:r?.id,name:'工作',links:[]}]}else{for(const m of data)if(!m.id){const {data:r}=await db.from('categories').insert({name:m.name,user_id:currentUser.id}).select().single();if(r)m.id=r.id}}saveLocal()}catch{data=local||[{name:'工作',links:[]}];toast('已进入本地模式，数据会保存在此浏览器')}render()}
+async function load(){const local=JSON.parse(localStorage.getItem(storeKey)||'null');try{const [cr,lr]=await Promise.all([db.from('categories').select('id,name,sort_order').eq('user_id',currentUser.id).order('sort_order').order('created_at'),db.from('links').select('id,category,title,url,sort_order').eq('user_id',currentUser.id).order('sort_order').order('created_at')]);if(cr.error||lr.error)throw Error();const lm={};lr.data.forEach(r=>(lm[r.category]??=[]).push(r));const names=[...cr.data.map(c=>c.name),...Object.keys(lm)];data=[...new Set(names)].map(name=>{const c=cr.data.find(x=>x.name===name);return {id:c?.id,name,sort_order:c?.sort_order,links:lm[name]||[]}});if(!data.length){const {data:r}=await db.from('categories').insert({name:'工作',user_id:currentUser.id}).select().single();data=[{id:r?.id,name:'工作',links:[]}]}else{for(const m of data)if(!m.id){const {data:r}=await db.from('categories').insert({name:m.name,user_id:currentUser.id}).select().single();if(r)m.id=r.id}}saveLocal()}catch{data=local||[{name:'工作',links:[]}];toast('已进入本地模式，数据会保存在此浏览器')}render()}
 function render(){const count=data.reduce((n,m)=>n+m.links.length,0);$('#layout').innerHTML=data.map((m,mi)=>`<section class="module" data-module="${mi}" ondragover="dragOver(event)" ondrop="dropModule(event,${mi})"><div class="module-head" draggable="true" ondragstart="dragModule(event,${mi})" ondragend="endDrag()" title="拖动标题栏调整模块顺序"><div><h2>${esc(m.name)}</h2><span class="count">${m.links.length} 个链接</span></div><div class="module-actions"><button title="重命名" onclick="renameCat(${mi})">✎</button><button title="删除模块" onclick="removeCat(${mi})">×</button><button class="add-link" onclick="openModal(${mi})">＋ 添加</button></div></div><div class="links">${m.links.map((l,li)=>`<a class="link" draggable="true" data-link="${mi}-${li}" ondragstart="dragLink(event,${mi},${li})" ondragend="endDrag()" ondragover="dragOver(event)" ondrop="dropLink(event,${mi},${li})" href="${esc(l.url)}" target="_blank" rel="noopener"><span class="link-title"><span class="favicon">${esc(l.title).slice(0,1).toUpperCase()}</span>${esc(l.title)}</span><span class="link-actions"><button onclick="event.preventDefault();editLink(${mi},${li})">编辑</button><button onclick="event.preventDefault();removeLink(${mi},${li})">删除</button></span></a>`).join('')||'<div class="empty">还没有链接，添加一个常用网站吧</div>'}</div></section>`).join('');$('#summary').textContent=`${data.length} 个模块 · ${count} 个链接`}
 function openModal(mi,li=null){cat=mi;editing=li;$('#modalTitle').textContent=li===null?'添加网页':'编辑网页';const l=li===null?{title:'',url:''}:data[mi].links[li];$('#title').value=l.title;$('#url').value=l.url;$('#modal').showModal();$('#title').focus()}
 $('#cancelBtn').onclick=()=>$('#modal').close();$('#form').onsubmit=async e=>{e.preventDefault();let title=$('#title').value.trim(),u=$('#url').value.trim();if(!u.toLowerCase().startsWith('http://')&&!u.toLowerCase().startsWith('https://'))u='https://'+u;let m=data[cat];if(editing===null){try{const {data:r,error}=await db.from('links').insert({category:m.name,title,url:u,user_id:currentUser.id}).select().single();if(!error)m.links.push(r);else throw Error()}catch{m.links.push({id:crypto.randomUUID(),title,url:u});saveLocal()};toast('链接已添加')}else{const r=m.links[editing];try{await db.from('links').update({title,url:u}).eq('id',r.id)}catch{}Object.assign(r,{title,url:u});saveLocal();toast('链接已更新')}$('#modal').close();render()};
@@ -51,7 +51,7 @@ async function finishDrop(e, targetIndex, linkIndex) {
   if (sourceIndex < 0) return;
   const next = data.map(m => ({...m, links: m.links.map(l => ({...l}))}));
   let writes;
-  let movedWrite;
+
   if (drag.kind === 'module') {
     if (sourceIndex === targetIndex) return;
     const [module] = next.splice(sourceIndex, 1);
@@ -76,32 +76,66 @@ async function finishDrop(e, targetIndex, linkIndex) {
       l.sort_order = n;
       return {table: 'links', id: l.id, values: {category: next[i].name, sort_order: n}};
     }));
-    movedWrite = writes.find(w => w.id === link.id);
-    // Save the actual move first, then the surrounding order.
-    writes = [movedWrite, ...writes.filter(w => w !== movedWrite)];
   } else return;
   if (!currentUser || writes.some(w => !w?.id)) {
     toast('无法保存拖动：请先登录并确认模块和网页已保存到云端');
     return;
   }
+  const previous = data;
+  const ownerId = currentUser.id;
+  const oldRows = new Map();
+  for (const m of previous) {
+    oldRows.set('categories:' + m.id, m);
+    for (const l of m.links) oldRows.set('links:' + l.id, {...l, category: m.name});
+  }
+  writes = writes.filter(w => {
+    const old = oldRows.get(w.table + ':' + w.id);
+    return !old || Object.entries(w.values).some(([key, value]) => old[key] !== value);
+  });
   savingDrag = true;
-  document.getElementById('layout').setAttribute('aria-busy', 'true');
+  // Render immediately; ordinary links stay clickable during cloud persistence.
+  data = next;
+  render();
+  setSortBusy(true);
   try {
-    for (const w of writes) {
+    const results = await Promise.allSettled(writes.map(async w => {
       const result = await db.from(w.table).update(w.values)
-        .eq('id', w.id).eq('user_id', currentUser.id).select('id').single();
+        .eq('id', w.id).eq('user_id', ownerId).select('id').single();
       if (result.error) throw result.error;
       if (!result.data) throw new Error('未更新到云端记录');
-    }
-    data = next;
-    render();
-    saveLocal();
+    }));
+    // Wait for every request before reading back a partially completed batch.
+    const failure = results.find(r => r.status === 'rejected');
+    if (failure) throw failure.reason;
+    if (currentUser?.id === ownerId) saveLocal();
   } catch (error) {
-    // Some earlier requests may have succeeded; reload the authoritative state.
-    await load();
-    toast('拖动未完整保存，已重新读取数据：' + (error.message || '云端连接失败'));
+    if (currentUser?.id !== ownerId) return;
+    data = previous;
+    render();
+    setSortBusy(true);
+    try {
+      const [categories, links] = await Promise.all([
+        db.from('categories').select('id,name,sort_order').eq('user_id',ownerId).order('sort_order').order('created_at').order('id'),
+        db.from('links').select('id,category,title,url,sort_order').eq('user_id',ownerId).order('sort_order').order('created_at').order('id')
+      ]);
+      if (categories.error || links.error) throw categories.error || links.error;
+      if (currentUser?.id !== ownerId) return;
+      const names = [...new Set([...categories.data.map(c=>c.name), ...links.data.map(l=>l.category)])];
+      data = names.map(name => ({...categories.data.find(c=>c.name===name), name, links:links.data.filter(l=>l.category===name)}));
+      saveLocal();
+      render();
+      toast('排序未完整保存，已重新读取云端数据：' + (error.message || '网络错误'));
+    } catch {
+      toast('排序保存失败，已恢复拖动前的显示；云端状态暂无法确认，请联网后刷新：' + (error.message || '网络错误'));
+    }
   } finally {
     savingDrag = false;
-    document.getElementById('layout').removeAttribute('aria-busy');
+    setSortBusy(false);
   }
+}
+
+function setSortBusy(busy) {
+  // Prevent conflicting writes, without blocking navigation or reading the page.
+  document.querySelectorAll('.module button, #addCategory, #form button[type="submit"], #form .primary').forEach(button => {button.disabled = busy;});
+  document.querySelectorAll('.module-head, .link').forEach(el => {el.draggable = !busy;});
 }
