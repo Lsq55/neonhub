@@ -25,3 +25,20 @@ button:disabled { cursor: wait; transform: none; }
 #account { max-width: calc(100% - 32px); flex-wrap: wrap; }
 #userEmail { overflow-wrap: anywhere; }
 @media(max-width:650px) { .shell { padding-top: 120px; } #account { left: 16px; right: 16px; } }
+/* Frosted warm background. Content cards stay unchanged. */
+body{position:relative;background:#fff8e7!important;overflow-x:hidden}
+body::before,body::after{content:"";position:fixed;z-index:-1;pointer-events:none;border-radius:50%;filter:blur(70px);opacity:.65}
+body::before{width:42vw;height:42vw;left:-12vw;top:12vh;background:#ffd166}
+body::after{width:38vw;height:38vw;right:-10vw;bottom:4vh;background:#ff8fab}
+.shell{position:relative}
+.shell::before{content:"";position:absolute;inset:24px 0 auto;height:170px;z-index:-1;background:#ffffff5c;border:1px solid #fff9;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 18px 60px #b48b3d1c}
+button,.link,.module,.logo{will-change:transform}
+button:active,.link:active{filter:saturate(1.25) brightness(1.06)}
+@media(max-width:650px){.shell::before{inset:10px -8px auto;height:150px}}
+/* Typography refinement: stronger weight and Roman-style Latin glyphs. */
+body,button,input{font-family:"Times New Roman",Georgia,"Microsoft YaHei",serif;font-weight:600}
+h1,.module h2,.login-card h2,form h2{font-family:"Times New Roman",Georgia,"Microsoft YaHei",serif;font-weight:900}
+.module h2{font-size:26px}
+.link{font-weight:600}
+.module-actions button,.link-actions button,#account button{font-weight:700}
+.empty,#loginError,#passwordStatus{font-weight:600}
