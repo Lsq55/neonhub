@@ -2,3 +2,9 @@
 
 #loginView{background:#fff8e7!important}
 main{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:20px!important}.module{cursor:grab}.module:active,.link:active{cursor:grabbing}.module[draggable="true"]:hover{transform:translate(-3px,-3px)}@media(max-width:850px){main{grid-template-columns:repeat(2,minmax(0,1fr))!important}}@media(max-width:560px){main{grid-template-columns:1fr!important}}
+/* Only the module header starts a module drag. Rows start link drags. */
+.module { cursor: default; }
+.module .module-head, .module .link { cursor: grab; }
+.module .module-head:active, .module .link:active { cursor: grabbing; }
+.drop-target { outline: 3px dashed #000; outline-offset: -8px; }
+#layout[aria-busy="true"] { pointer-events: none; cursor: wait; }
